@@ -1,5 +1,10 @@
 import os
 import sqlite3
+
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
 from google import genai
 from flask import Blueprint, render_template, request, jsonify, current_app
 
@@ -8,8 +13,8 @@ main_bp = Blueprint('main', __name__)
 
 # --- CONFIGURAÇÕES DE HOMOLOGAÇÃO / SEGURANÇA ---
 MODO_TESTE = True
-EMAIL_TESTE = "luisinhobonetto@gmail.com"
-WHATSAPP_TESTE = "(41) 98474-4757"
+EMAIL_TESTE = os.getenv("EMAIL_TESTE", "seu_email_padrao@exemplo.com")
+WHATSAPP_TESTE = os.getenv("WHATSAPP_TESTE", "(00) 00000-0000")
 
 # Inicializa o cliente oficial da API do Google GenAI
 ai_client = genai.Client()
