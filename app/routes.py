@@ -441,6 +441,7 @@ def enviar_email():
     empresa_id = request.form.get("empresa_id")
     email_destino_original = request.form.get("contato")
     mensagem_corpo = request.form.get("mensagem")
+    razao_social = request.form.get("razao_social", "Não informada")  # Opcional: passar no form
 
     # Define o destinatário com base no modo de teste
     if MODO_TESTE:
@@ -459,35 +460,66 @@ def enviar_email():
     else:
         corpo_final = mensagem_corpo
 
-    # Configurações de envio SMTP
     remetente = os.getenv("EMAIL_REMETENTE")
     senha = os.getenv("SENHA_EMAIL")
     smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
     smtp_port = int(os.getenv("SMTP_PORT", 587))
 
+    status_texto = "Sucesso"
+    mensagem_resultado = ""
+
     if not remetente or not senha:
-        return "<div class='alert alert-danger'>Erro: As credenciais EMAIL_REMETENTE ou SENHA_EMAIL não foram encontradas no arquivo .env</div>", 500
+        status_texto = "Erro de Configuração"
+        mensagem_resultado = "<div class='alert alert-danger'>Erro: As credenciais EMAIL_REMETENTE ou SENHA_EMAIL não foram encontradas no .env</div>"
+    else:
+        try:
+            msg = MIMEMultipart()
+            msg['From'] = remetente
+            msg['To'] = email_destino
+            msg['Subject'] = assunto
+            msg.attach(MIMEText(corpo_final, 'plain', 'utf-8'))
 
+            server = smtplib.SMTP(smtp_server, smtp_port)
+            server.starttls()
+            server.login(remetente, senha)
+            server.send_message(msg)
+            server.quit()
+
+            status_texto = "Sucesso"
+            mensagem_resultado = f"<div class='alert alert-success'><strong>Sucesso!</strong> E-mail enviado com sucesso para: <strong>{email_destino}</strong></div>"
+
+        except Exception as e:
+            current_app.logger.exception("Erro ao enviar e-mail via SMTP")
+            status_texto = f"Falha: {str(e)}"
+            mensagem_resultado = f"<div class='alert alert-danger'><strong>Falha no envio:</strong> {str(e)}</div>"
+
+    # SALVANDO NO BANCO DE DADOS SQLite
     try:
-        # Montagem do e-mail
-        msg = MIMEMultipart()
-        msg['From'] = remetente
-        msg['To'] = email_destino
-        msg['Subject'] = assunto
-        msg.attach(MIMEText(corpo_final, 'plain', 'utf-8'))
+        db_path = get_db_path()
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
 
-        # Conexão e envio via SMTP
-        server = smtplib.SMTP(smtp_server, smtp_port)
-        server.starttls()  # Criptografia TLS
-        server.login(remetente, senha)
-        server.send_message(msg)
-        server.quit()
+        # Garante que a tabela existe
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS historico_disparos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                empresa_id INTEGER,
+                email_destino TEXT,
+                modo_teste BOOLEAN,
+                status TEXT,
+                data_envio TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
 
-        status_envio = f"<div class='alert alert-success'><strong>Sucesso!</strong> E-mail enviado com sucesso para: <strong>{email_destino}</strong></div>"
+        cursor.execute("""
+            INSERT INTO historico_disparos (empresa_id, email_destino, modo_teste, status)
+            VALUES (?, ?, ?, ?)
+        """, (empresa_id, email_destino, int(MODO_TESTE), status_texto))
 
-    except Exception as e:
-        current_app.logger.exception("Erro ao enviar e-mail via SMTP")
-        status_envio = f"<div class='alert alert-danger'><strong>Falha no envio:</strong> {str(e)}</div>"
+        conn.commit()
+        conn.close()
+    except Exception as db_err:
+        current_app.logger.exception("Erro ao gravar histórico no banco de dados")
 
     return f"""
     <!DOCTYPE html>
@@ -497,7 +529,7 @@ def enviar_email():
         <div class='card shadow p-4 mx-auto' style='max-width: 550px;'>
             <h2>Status do Disparo</h2>
             {aviso_teste}
-            {status_envio}
+            {mensagem_resultado}
             <a href='javascript:history.back()' class='btn btn-primary mt-3'>Voltar para Revisão</a>
         </div>
     </div></body></html>
@@ -533,3 +565,42 @@ def enviar_whatsapp():
         </div>
     </div></body></html>
     """
+
+
+@main_bp.route("/historico")
+def historico():
+    # Consulta o histórico de disparos gravado no SQLite
+    conn = None
+    registros = []
+    try:
+        db_path = get_db_path()
+        if os.path.exists(db_path):
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+
+            # Garante que a tabela existe antes de consultar
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS historico_disparos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    empresa_id INTEGER,
+                    email_destino TEXT,
+                    modo_teste BOOLEAN,
+                    status TEXT,
+                    data_envio TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+            cursor.execute("""
+                SELECT id, empresa_id, email_destino, modo_teste, status, data_envio
+                FROM historico_disparos
+                ORDER BY data_envio DESC
+            """)
+            registros = cursor.fetchall()
+    except Exception as e:
+        current_app.logger.exception("Erro ao buscar histórico de disparos")
+    finally:
+        if conn:
+            conn.close()
+
+    return render_template("historico.html", registros=registros)
