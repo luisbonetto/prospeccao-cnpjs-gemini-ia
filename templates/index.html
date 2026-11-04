@@ -28,6 +28,14 @@
                     <label class="form-label"><strong>Sua Empresa:</strong></label>
                     <input type="text" name="remetente_empresa" class="form-control" placeholder="Ex: Sua Empresa / Autônomo" required>
                 </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label"><strong>Canal de Abordagem:</strong></label>
+                    <select name="canal_prospeccao" class="form-select" required>
+                        <option value="email">Apenas E-mail</option>
+                        <option value="telefone">Apenas Telefone / WhatsApp</option>
+                        <option value="ambos" selected>Ambos (E-mail e Telefone/WhatsApp)</option>
+                    </select>
+                </div>
             </div>
             <div class="mb-4">
                 <label class="form-label"><strong>Objetivo da Prospecção:</strong></label>

@@ -14,40 +14,76 @@
         <!-- Grid em Colunas Responsivo -->
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
             {% for item in mensagens_geradas %}
-            <div class="col d-flex align-items-stretch">
-                <div class="card shadow-sm w-100 h-100 d-flex flex-column">
-                    <div class="card-header bg-dark text-white">
-                        <div class="fw-bold fs-6 text-truncate" title="{{ item.razao_social }}">
-                            {{ item.razao_social }}
-                        </div>
-                        <div class="small text-light opacity-75 mt-1 text-truncate">
-                            <strong>Email:</strong> {{ item.email }}<br>
-                            <strong>Tel:</strong> {{ item.telefone }}
-                        </div>
-                    </div>
-
-                    <div class="card-body d-flex flex-column">
-                        <!-- Cada card possui sua própria área de texto editável -->
-                        <div class="mb-3 flex-grow-1 d-flex flex-column">
-                            <label class="form-label text-secondary small fw-bold">Mensagem gerada para edição:</label>
-                            <!-- Damos um ID/Name único baseado no ID da empresa para capturar via Flask -->
-                            <textarea id="msg_{{ item.id }}" class="form-control flex-grow-1" rows="7">{{ item.mensagem }}</textarea>
+                <div class="col d-flex align-items-stretch">
+                    <div class="card shadow-sm w-100 h-100 d-flex flex-column">
+                        <div class="card-header bg-dark text-white">
+                            <div class="fw-bold fs-6 text-truncate" title="{{ item.razao_social }}">
+                                {{ item.razao_social }}
+                            </div>
+                            <div class="small text-light opacity-75 mt-1 text-truncate">
+                                <strong>Email:</strong> {{ item.email }}<br>
+                                <strong>Tel:</strong> {{ item.telefone }}
+                            </div>
                         </div>
 
-                        <!-- Botões de Ação Separados (E-mail vs WhatsApp) -->
-                        <div class="mt-auto pt-2 d-grid gap-2">
-                            <button type="button" class="btn btn-success fw-bold" onclick="enviarMensagem('{{ item.id }}', '{{ item.email }}', '/enviar-email')">
-                                Enviar por E-mail
-                            </button>
-                            <button type="button" class="btn btn-outline-success fw-bold" onclick="enviarMensagem('{{ item.id }}', '{{ item.telefone }}', '/enviar-whatsapp')">
-                                Enviar por WhatsApp
-                            </button>
+                        <div class="card-body d-flex flex-column gap-3">
+                            <!-- Bloco de E-mail se solicitado -->
+                            {% if item.canal in ['email', 'ambos'] %}
+                            <div class="flex-grow-1 d-flex flex-column">
+                                <label class="form-label text-primary small fw-bold">E-mail (Assunto + Corpo):</label>
+                                <textarea id="msg_email_{{ item.id }}" class="form-control flex-grow-1 mb-2" rows="6">{{ item.mensagem_email }}</textarea>
+                                <button type="button" class="btn btn-primary fw-bold w-100" onclick="enviarMensagem('{{ item.id }}', '{{ item.email }}', 'msg_email_{{ item.id }}', '/enviar-email')">
+                                    Enviar por E-mail
+                                </button>
+                            </div>
+                            {% endif %}
+
+                            <!-- Bloco de Telefone/WhatsApp se solicitado -->
+                            {% if item.canal in ['telefone', 'ambos'] %}
+                            <div class="flex-grow-1 d-flex flex-column">
+                                <label class="form-label text-success small fw-bold">Script / WhatsApp:</label>
+                                <textarea id="msg_tel_{{ item.id }}" class="form-control flex-grow-1 mb-2" rows="5">{{ item.mensagem_telefone }}</textarea>
+                                <button type="button" class="btn btn-success fw-bold w-100" onclick="enviarMensagem('{{ item.id }}', '{{ item.telefone }}', 'msg_tel_{{ item.id }}', '/enviar-whatsapp')">
+                                    Enviar por WhatsApp / Script
+                                </button>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
-            </div>
             {% endfor %}
         </div>
+
+        <script>
+            function enviarMensagem(empresaId, contatoDestino, fieldId, rota) {
+                const mensagemTexto = document.getElementById(fieldId).value;
+
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = rota;
+
+                const inputId = document.createElement('input');
+                inputId.type = 'hidden';
+                inputId.name = 'empresa_id';
+                inputId.value = empresaId;
+                form.appendChild(inputId);
+
+                const inputContato = document.createElement('input');
+                inputContato.type = 'hidden';
+                inputContato.name = 'contato';
+                inputContato.value = contatoDestino;
+                form.appendChild(inputContato);
+
+                const inputMsg = document.createElement('input');
+                inputMsg.type = 'hidden';
+                inputMsg.name = 'mensagem';
+                inputMsg.value = mensagemTexto;
+                form.appendChild(inputMsg);
+
+                document.body.appendChild(form);
+                form.submit();
+            }
+        </script>
 
         <!-- Botão de Voltar Geral -->
         <div class="d-flex justify-content-start pt-3 border-top">

@@ -335,16 +335,15 @@ def resultados():
 
 @app.route("/gerar-mensagens", methods=["POST"])
 def gerar_mensagens():
-
     remetente_nome = request.form.get("remetente_nome")
     remetente_cargo = request.form.get("remetente_cargo")
     remetente_empresa = request.form.get("remetente_empresa")
     objetivo_prospeccao = request.form.get("objetivo_prospeccao")
+    canal_prospeccao = request.form.get("canal_prospeccao", "ambos")
 
     ids_selecionados = request.form.getlist("empresas_selecionadas")
-
     if not ids_selecionados:
-        return "Nenhuma empresa foi selecionada para prospecção. <a href='javascript:history.back()'>Voltar</a>", 400
+        return "Nenhuma empresa selecionada. <a href='javascript:history.back()'>Voltar</a>", 400
 
     db_path = get_db_path()
     conn = sqlite3.connect(db_path)
@@ -354,15 +353,8 @@ def gerar_mensagens():
     placeholders = ",".join(["?"] * len(ids_selecionados))
     query = f"""
         SELECT DISTINCT
-            e.id,
-            emp.razao_social,
-            e.nome_fantasia,
-            c.descricao AS desc_cnae,
-            e.uf,
-            e.municipio,
-            e.email,
-            e.ddd_1,
-            e.telefone_1
+            e.id, emp.razao_social, e.nome_fantasia, c.descricao AS desc_cnae,
+            e.uf, e.municipio, e.email, e.ddd_1, e.telefone_1
         FROM estabelecimentos e
         INNER JOIN empresas emp ON e.cnpj_basico = emp.cnpj_basico
         LEFT JOIN cnaes c ON e.cnae_fiscal_principal = c.codigo
@@ -374,61 +366,82 @@ def gerar_mensagens():
 
     mensagens_geradas = []
 
-
     for emp in empresas:
-
         razao = emp["razao_social"] or emp["nome_fantasia"] or "Empresa"
         cnae_desc = emp["desc_cnae"] or "Atividade comercial geral"
         cidade = emp["municipio"]
         uf = emp["uf"]
-
         telefone = f"({emp['ddd_1']}) {emp['telefone_1']}" if emp['ddd_1'] and emp['telefone_1'] else "Não informado"
         email = emp["email"].lower() if emp["email"] else "Não informado"
 
-        # Prompt estruturado ajustado para retornar apenas a mensagem final
-        prompt = f"""
-                Você é um assistente de vendas e prospecção comercial altamente qualificado.
-                Elabore uma mensagem profissional, cordial e direta de prospecção comercial (focada em B2B) para enviar a um potencial cliente.
+        prompt_email = f"""
+        Você é um especialista em prospecção B2B por e-mail.
+        Escreva um e-mail comercial completo, profissional e altamente personalizado.
 
-                Dados do remetente:
-                - Nome: {remetente_nome}
-                - Cargo: {remetente_cargo}
-                - Empresa: {remetente_empresa}
-                - Objetivo principal da abordagem: {objetivo_prospeccao}
+        Remetente: {remetente_nome} ({remetente_cargo} na {remetente_empresa})
+        Objetivo: {objetivo_prospeccao}
+        Destinatário: {razao} | Atuação: {cnae_desc} | Local: {cidade}/{uf}
 
-                Dados da empresa prospectada (alvo):
-                - Razão Social / Nome: {razao}
-                - Ramo de atuação (CNAE): {cnae_desc}
-                - Localização: {cidade} - {uf}
+        Diretrizes do E-mail:
+        1. Inclua uma linha de Assunto atrativa no topo no formato "Assunto: ...".
+        2. Apresente de forma clara o valor técnico/operacional oferecido para o ramo ({cnae_desc}).
+        3. Mantenha tom profissional e encerre com chamada para agendar conversa rápida.
+        4. Retorne APENAS o texto do e-mail pronto (Assunto + Corpo), sem explicações adicionais.
+        """
 
-                Diretrizes:
-                1. A mensagem deve ser personalizada com base no ramo de atuação da empresa alvo.
-                2. Seja claro sobre o valor que a solução/serviço pode agregar ao negócio deles.
-                3. Termine com uma chamada para ação (CTA) educada para uma breve conversa.
-                4. IMPORTANTE: Retorne APENAS o texto da mensagem pronta para envio, sem introduções, sem explicações, sem comentários extras e sem justificativas sobre a abordagem.
-                """
+        prompt_telefone = f"""
+        Você é um especialista em prospecção comercial por telefone e mensagens instantâneas (WhatsApp).
+        Escreva um roteiro curto e direto para ligação ou mensagem rápida de WhatsApp.
 
-        try:
-            # Usando o modelo oficial estável
-            response = ai_client.models.generate_content(
-                model="gemini-3.1-flash-lite",  # gemini-3.1-flash-lite gemini-3.6-flash gemini-1.5-flash  gemini-3.8-flash # gemini-2.5-flash
-                contents=prompt
-            )
-            texto_mensagem = response.text
-        except Exception as e:
-            texto_mensagem = f"Erro ao gerar mensagem via IA: {str(e)}"
+        Remetente: {remetente_nome} ({remetente_empresa})
+        Objetivo: {objetivo_prospeccao}
+        Destinatário: {razao} | Atuação: {cnae_desc} | Local: {cidade}/{uf}
+
+        Diretrizes de Telefone/WhatsApp:
+        1. Seja extremamente conciso (máximo 3 a 4 parágrafos curtos).
+        2. Abordagem rápida: Apresentação breve -> Dor/Oportunidade do setor -> Pergunta aberta/CTA.
+        3. Use tom amigável e direto.
+        4. Retorne APENAS o script/mensagem pronta, sem comentários nem notas de instrução.
+        """
+
+        msg_email = ""
+        msg_telefone = ""
+
+        # Geração condicional por canal escolhido
+        if canal_prospeccao in ["email", "ambos"]:
+            try:
+                res = ai_client.models.generate_content(
+                    model="gemini-3.1-flash-lite",
+                    contents=prompt_email
+                )
+                msg_email = res.text
+            except Exception as e:
+                msg_email = f"Erro na IA (E-mail): {str(e)}"
+
+        if canal_prospeccao in ["telefone", "ambos"]:
+            try:
+                res = ai_client.models.generate_content(
+                    model="gemini-3.1-flash-lite",
+                    contents=prompt_telefone
+                )
+                msg_telefone = res.text
+            except Exception as e:
+                msg_telefone = f"Erro na IA (Telefone): {str(e)}"
 
         mensagens_geradas.append({
             "id": emp["id"],
             "razao_social": razao,
             "email": email,
             "telefone": telefone,
-            "mensagem": texto_mensagem
+            "canal": canal_prospeccao,
+            "mensagem_email": msg_email,
+            "mensagem_telefone": msg_telefone
         })
 
     return render_template(
         "revisao_mensagens.html",
-        mensagens_geradas=mensagens_geradas
+        mensagens_geradas=mensagens_geradas,
+        canal_selecionado=canal_prospeccao
     )
 
 

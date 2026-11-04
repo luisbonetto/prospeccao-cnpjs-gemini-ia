@@ -9,14 +9,13 @@
 <body class="bg-light">
     <div class="container my-5">
         <h2 class="mb-3">Revisão de Mensagens Personalizadas (IA)</h2>
-        <p class="text-muted">Avalie e edite as mensagens geradas pelo Gemini. Envie individualmente conforme necessário.</p>
+        <p class="text-muted">Avalie e edite as mensagens geradas pelo Gemini. Escolha se deseja enviar por E-mail ou WhatsApp individualmente.</p>
 
         <!-- Grid em Colunas Responsivo -->
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
             {% for item in mensagens_geradas %}
             <div class="col d-flex align-items-stretch">
-                <!-- Cada card agora é um formulário independente -->
-                <form action="/enviar-mensagem-individual" method="POST" class="card shadow-sm w-100 h-100 d-flex flex-column">
+                <div class="card shadow-sm w-100 h-100 d-flex flex-column">
                     <div class="card-header bg-dark text-white">
                         <div class="fw-bold fs-6 text-truncate" title="{{ item.razao_social }}">
                             {{ item.razao_social }}
@@ -28,24 +27,24 @@
                     </div>
 
                     <div class="card-body d-flex flex-column">
-                        <input type="hidden" name="empresa_id" value="{{ item.id }}">
-                        <input type="hidden" name="email" value="{{ item.email }}">
-                        <input type="hidden" name="telefone" value="{{ item.telefone }}">
-                        <input type="hidden" name="razao_social" value="{{ item.razao_social }}">
-
+                        <!-- Cada card possui sua própria área de texto editável -->
                         <div class="mb-3 flex-grow-1 d-flex flex-column">
                             <label class="form-label text-secondary small fw-bold">Mensagem gerada para edição:</label>
-                            <textarea name="mensagem" class="form-control flex-grow-1" rows="7" required>{{ item.mensagem }}</textarea>
+                            <!-- Damos um ID/Name único baseado no ID da empresa para capturar via Flask -->
+                            <textarea id="msg_{{ item.id }}" class="form-control flex-grow-1" rows="7">{{ item.mensagem }}</textarea>
                         </div>
 
-                        <!-- Botão de Envio Individual para cada card -->
-                        <div class="mt-auto pt-2">
-                            <button type="submit" class="btn btn-success w-100 fw-bold">
-                                Enviar para esta Empresa
+                        <!-- Botões de Ação Separados (E-mail vs WhatsApp) -->
+                        <div class="mt-auto pt-2 d-grid gap-2">
+                            <button type="button" class="btn btn-success fw-bold" onclick="enviarMensagem('{{ item.id }}', '{{ item.email }}', '/enviar-email')">
+                                Enviar por E-mail
+                            </button>
+                            <button type="button" class="btn btn-outline-success fw-bold" onclick="enviarMensagem('{{ item.id }}', '{{ item.telefone }}', '/enviar-whatsapp')">
+                                Enviar por WhatsApp
                             </button>
                         </div>
                     </div>
-                </form>
+                </div>
             </div>
             {% endfor %}
         </div>
@@ -55,5 +54,41 @@
             <a href="javascript:history.back()" class="btn btn-outline-secondary btn-lg">Voltar aos Resultados</a>
         </div>
     </div>
+
+    <!-- Script auxiliar para disparar as rotas via requisição POST mantendo a edição do usuário -->
+    <script>
+        function enviarMensagem(empresaId, contatoDestino, rota) {
+            const mensagemTexto = document.getElementById('msg_' + empresaId).value;
+
+            // Criando um formulário dinâmico para enviar os dados via POST para a rota específica
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = rota;
+
+            // Campo ID da empresa
+            const inputId = document.createElement('input');
+            inputId.type = 'hidden';
+            inputId.name = 'empresa_id';
+            inputId.value = empresaId;
+            form.appendChild(inputId);
+
+            // Campo Contato (Email ou Telefone)
+            const inputContato = document.createElement('input');
+            inputContato.type = 'hidden';
+            inputContato.name = 'contato';
+            inputContato.value = contatoDestino;
+            form.appendChild(inputContato);
+
+            // Campo Mensagem Editada
+            const inputMsg = document.createElement('input');
+            inputMsg.type = 'hidden';
+            inputMsg.name = 'mensagem';
+            inputMsg.value = mensagemTexto;
+            form.appendChild(inputMsg);
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+    </script>
 </body>
 </html>
