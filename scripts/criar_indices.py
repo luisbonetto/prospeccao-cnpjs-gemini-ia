@@ -3,7 +3,7 @@ import sqlite3
 
 def criar_indices():
     # Conecta ao seu banco de dados existente
-    conn = sqlite3.connect('leads.db')
+    conn = sqlite3.connect('../leads.db')
     cursor = conn.cursor()
 
     print("=== CRIANDO ÍNDICES DE OTIMIZAÇÃO NO BANCO ===")

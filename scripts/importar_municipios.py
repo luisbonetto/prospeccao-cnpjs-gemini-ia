@@ -12,7 +12,7 @@ def importar_tabela_municipios():
         return
 
     print("A abrir o Municipios.zip...")
-    conn = sqlite3.connect('leads.db')
+    conn = sqlite3.connect('../leads.db')
     cursor = conn.cursor()
 
     # Cria a tabela de municípios se não existir

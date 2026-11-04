@@ -92,7 +92,7 @@ def importar_cnaes():
         print(f"[AVISO] {nome_zip} não encontrado.")
         return
 
-    conn = sqlite3.connect('leads.db')
+    conn = sqlite3.connect('../leads.db')
     cursor = conn.cursor()
     criar_banco_e_tabelas(cursor)
 
@@ -134,7 +134,7 @@ def importar_cnaes():
 
 
 def importar_dados_genericos(prefixo_arquivo, nome_tabela, colunas_sql, inicio=0, fim=10):
-    conn = sqlite3.connect('leads.db')
+    conn = sqlite3.connect('../leads.db')
     cursor = conn.cursor()
     criar_banco_e_tabelas(cursor)
 

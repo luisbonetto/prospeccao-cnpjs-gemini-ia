@@ -2,7 +2,7 @@ import sqlite3
 import os
 from tqdm import tqdm
 
-db_path = 'leads.db'
+db_path = '../leads.db'
 if not os.path.exists(db_path):
     print("❌ Erro: Arquivo leads.db não encontrado!")
     exit()
