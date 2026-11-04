@@ -1,7 +1,7 @@
 import os
 import sqlite3
 from google import genai
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, current_app
 
 # Cria o Blueprint para as rotas principais
 main_bp = Blueprint('main', __name__)
@@ -73,7 +73,7 @@ def index():
                     "descricao": descricao
                 })
     except Exception as e:
-        app.logger.exception("Erro ao carregar CNAEs para o index")
+        current_app.logger.exception("Erro ao carregar CNAEs para o index")
     finally:
         if conn:
             conn.close()
@@ -114,7 +114,7 @@ def api_municipios(uf):
         return jsonify(cidades)
 
     except Exception as erro:
-        app.logger.exception("Erro ao carregar municípios")
+        current_app.logger.exception("Erro ao carregar municípios")
         return jsonify({"erro": str(erro)}), 500
 
     finally:
@@ -326,7 +326,7 @@ def resultados():
         )
 
     except Exception:
-        app.logger.exception("Erro ao consultar resultados")
+        current_app.logger.exception("Erro ao consultar resultados")
         return "Ocorreu um erro ao consultar as empresas. Verifique o terminal.", 500
     finally:
         conn.close()
