@@ -11,7 +11,6 @@
         <h2 class="mb-3">Revisão de Mensagens Personalizadas (IA)</h2>
         <p class="text-muted">Avalie e edite as mensagens geradas pelo Gemini. Escolha se deseja enviar por E-mail ou WhatsApp individualmente.</p>
 
-        <!-- Grid em Colunas Responsivo -->
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
             {% for item in mensagens_geradas %}
                 <div class="col d-flex align-items-stretch">
@@ -27,7 +26,7 @@
                         </div>
 
                         <div class="card-body d-flex flex-column gap-3">
-                            <!-- Bloco de E-mail se solicitado -->
+                            <!-- Bloco de E-mail -->
                             {% if item.canal in ['email', 'ambos'] %}
                             <div class="flex-grow-1 d-flex flex-column">
                                 <label class="form-label text-primary small fw-bold">E-mail (Assunto + Corpo):</label>
@@ -38,7 +37,7 @@
                             </div>
                             {% endif %}
 
-                            <!-- Bloco de Telefone/WhatsApp se solicitado -->
+                            <!-- Bloco de WhatsApp -->
                             {% if item.canal in ['telefone', 'ambos'] %}
                             <div class="flex-grow-1 d-flex flex-column">
                                 <label class="form-label text-success small fw-bold">Script / WhatsApp:</label>
@@ -55,6 +54,7 @@
         </div>
 
         <script>
+            // Função JavaScript auxiliar para criar dinamicamente um formulário POST e submetê-lo
             function enviarMensagem(empresaId, contatoDestino, fieldId, rota) {
                 const mensagemTexto = document.getElementById(fieldId).value;
 
@@ -85,7 +85,6 @@
             }
         </script>
 
-        <!-- Botão de Voltar Geral -->
         <div class="d-flex justify-content-start pt-3 border-top">
             <a href="javascript:history.back()" class="btn btn-outline-secondary btn-lg">Voltar aos Resultados</a>
         </div>

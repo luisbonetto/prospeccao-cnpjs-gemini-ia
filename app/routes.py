@@ -3,7 +3,7 @@ import sqlite3
 from google import genai
 from flask import Blueprint, render_template, request, jsonify, current_app
 
-# Cria o Blueprint para as rotas principais
+# Cria um Blueprint do Flask para modularizar as rotas principais
 main_bp = Blueprint('main', __name__)
 
 # --- CONFIGURAÇÕES DE HOMOLOGAÇÃO / SEGURANÇA ---
@@ -11,8 +11,10 @@ MODO_TESTE = True
 EMAIL_TESTE = "luisinhobonetto@gmail.com"
 WHATSAPP_TESTE = "(41) 98474-4757"
 
+# Inicializa o cliente oficial da API do Google GenAI
 ai_client = genai.Client()
 
+# Dicionário de mapeamento para traduzir os códigos de situação cadastral da Receita Federal
 SITUACAO_MAP = {
     "01": "NULA",
     "02": "ATIVA",
@@ -22,7 +24,7 @@ SITUACAO_MAP = {
 }
 
 def get_db_path():
-    # Sobe um nível a partir de 'app/' para achar a raiz onde está o 'leads.db'
+    # Navega um nível acima do diretório atual ('app/') para localizar o arquivo 'leads.db' na raiz
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(base_dir, "leads.db")
 
@@ -34,24 +36,24 @@ def index():
     try:
         db_path = get_db_path()
         if os.path.exists(db_path):
+            # Conecta ao banco de dados SQLite e define o modo de retorno como dicionário (Row)
             conn = sqlite3.connect(db_path)
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
 
-            # Busca todos os CNAEs ordenados por código
+            # Busca todos os CNAEs cadastrados ordenados pelo código
             cursor.execute("SELECT codigo, descricao FROM cnaes ORDER BY codigo ASC")
             rows = cursor.fetchall()
 
-            # Agrupa dinamicamente por Divisão (2 primeiros dígitos ou prefixo)
+            # Agrupa dinamicamente os CNAEs por divisão com base nos dois primeiros dígitos
             for row in rows:
                 codigo = str(row["codigo"]).strip()
                 descricao = row["descricao"] or "Sem descrição"
 
-                # Pega os 2 primeiros dígitos como categoria/divisão principal
                 prefixo = codigo[:2] if len(codigo) >= 2 else "Geral"
                 categoria_nome = f"Divisão {prefixo}"
 
-                # Se quiser nomear categorias mais amigáveis para alguns prefixos comuns:
+                # Atribui nomes amigáveis para divisões industriais e comerciais comuns
                 if prefixo == "27":
                     categoria_nome = "Divisão 27 - Fabricação de Máquinas e Equipamentos Elétricos"
                 elif prefixo == "43":
@@ -83,6 +85,7 @@ def index():
 
 @main_bp.route("/api/municipios/<uf>")
 def api_municipios(uf):
+    # Rota de API AJAX para buscar municípios filtrados pela UF selecionada
     conn = None
     try:
         db_path = get_db_path()
@@ -124,9 +127,8 @@ def api_municipios(uf):
 
 @main_bp.route("/resultados", methods=["POST", "GET"])
 def resultados():
-    # Coleta os parâmetros de filtro via POST ou GET (paginação)
+    # Coleta filtros enviados via formulário (POST) ou parâmetros de paginação (GET)
     if request.method == "POST":
-
         remetente_nome = request.form.get("remetente_nome", "")
         remetente_cargo = request.form.get("remetente_cargo", "")
         remetente_empresa = request.form.get("remetente_empresa", "")
@@ -138,10 +140,8 @@ def resultados():
         cnae = request.form.get("cnae", "")
         busca_nome = request.form.get("busca_nome", "")
         cnpj_busca = request.form.get("cnpj_busca", "")
-
         filtro_contato = request.form.get("filtro_contato", "todas")
     else:
-
         remetente_nome = request.args.get("remetente_nome", "")
         remetente_cargo = request.args.get("remetente_cargo", "")
         remetente_empresa = request.args.get("remetente_empresa", "")
@@ -153,10 +153,9 @@ def resultados():
         cnae = request.args.get("cnae", "")
         busca_nome = request.args.get("busca_nome", "")
         cnpj_busca = request.args.get("cnpj_busca", "")
-
         filtro_contato = request.args.get("filtro_contato", "todas")
 
-    # Controle da paginação
+    # Tratamento seguro da paginação
     try:
         pagina = int(request.args.get("pagina", 1))
         if pagina < 1:
@@ -164,7 +163,7 @@ def resultados():
     except ValueError:
         pagina = 1
 
-    limite = 50  # 50 empresas por página
+    limite = 50
     offset = (pagina - 1) * limite
 
     db_path = get_db_path()
@@ -176,11 +175,10 @@ def resultados():
 
     try:
         cursor = conn.cursor()
-
-        # Montagem dinâmica dos filtros
         where_clauses = ["1=1"]
         params = []
 
+        # Construção dinâmica das cláusulas de filtro SQL
         if estado:
             where_clauses.append("e.uf = ?")
             params.append(estado)
@@ -208,16 +206,16 @@ def resultados():
 
         if filtro_contato == "com_contato":
             where_clauses.append("""
-                        (
-                            (e.ddd_1 IS NOT NULL AND e.ddd_1 != '' AND e.telefone_1 IS NOT NULL AND e.telefone_1 != '') 
-                            OR 
-                            (e.email IS NOT NULL AND e.email != '' AND e.email != 'não informado')
-                        )
-                    """)
+                (
+                    (e.ddd_1 IS NOT NULL AND e.ddd_1 != '' AND e.telefone_1 IS NOT NULL AND e.telefone_1 != '') 
+                    OR 
+                    (e.email IS NOT NULL AND e.email != '' AND e.email != 'não informado')
+                )
+            """)
 
         where_sql = " AND ".join(where_clauses)
 
-        # 1. Contagem total de registros para a paginação
+        # Consulta para contar o total de registros atendidos pelos filtros (para paginação)
         count_query = f"""
             SELECT COUNT(DISTINCT e.id) as total
             FROM estabelecimentos e
@@ -232,7 +230,7 @@ def resultados():
         if total_paginas == 0:
             total_paginas = 1
 
-        # 2. Consulta principal fazendo o JOIN correto com a tabela 'cnaes' (no plural, conforme o seu print)
+        # Consulta principal paginada unindo estabelecimentos, empresas e descrições de CNAE
         query = f"""
             SELECT DISTINCT
                 e.id,
@@ -275,37 +273,25 @@ def resultados():
                 if row["ddd_1"] and row["telefone_1"]
                 else "Não informado"
             )
-            situacao_texto = SITUACAO_MAP.get(
-                row["situacao_cadastral"], row["situacao_cadastral"]
-            )
+            situacao_texto = SITUACAO_MAP.get(row["situacao_cadastral"], row["situacao_cadastral"])
 
             cnae_codigo = row["cnae_fiscal_principal"] or "N/I"
-            cnae_descricao = row["desc_cnae"] if (row["desc_cnae"]) else "Descrição não encontrada"
+            cnae_descricao = row["desc_cnae"] if row["desc_cnae"] else "Descrição não encontrada"
 
-            empresas.append(
-                {
-                    "id": row["id"],
-                    "cnpj": cnpj_fmt,
-                    "razao_social": (
-                            row["razao_social"] or row["nome_fantasia"] or "Não informada"
-                    ),
-                    "nome_fantasia": row["nome_fantasia"],
-                    "atividade_codigo": cnae_codigo,
-                    "atividade_descricao": cnae_descricao,
-                    "estado": row["uf"],
-                    "cidade": row["municipio"],
-                    "situacao": situacao_texto,
-                    "capital_social": (
-                        f"R$ {row['capital_social']}"
-                        if row["capital_social"]
-                        else "R$ 0,00"
-                    ),
-                    "telefone": telefone,
-                    "email": (
-                        row["email"].lower() if row["email"] else "Não informado"
-                    ),
-                }
-            )
+            empresas.append({
+                "id": row["id"],
+                "cnpj": cnpj_fmt,
+                "razao_social": row["razao_social"] or row["nome_fantasia"] or "Não informada",
+                "nome_fantasia": row["nome_fantasia"],
+                "atividade_codigo": cnae_codigo,
+                "atividade_descricao": cnae_descricao,
+                "estado": row["uf"],
+                "cidade": row["municipio"],
+                "situacao": situacao_texto,
+                "capital_social": f"R$ {row['capital_social']}" if row["capital_social"] else "R$ 0,00",
+                "telefone": telefone,
+                "email": row["email"].lower() if row["email"] else "Não informado",
+            })
 
         return render_template(
             "resultados.html",
@@ -334,6 +320,7 @@ def resultados():
 
 @main_bp.route("/gerar-mensagens", methods=["POST"])
 def gerar_mensagens():
+    # Coleta os dados do remetente e IDs das empresas selecionadas para geração em lote via Gemini
     remetente_nome = request.form.get("remetente_nome")
     remetente_cargo = request.form.get("remetente_cargo")
     remetente_empresa = request.form.get("remetente_empresa")
@@ -365,6 +352,7 @@ def gerar_mensagens():
 
     mensagens_geradas = []
 
+    # Itera sobre cada empresa selecionada gerando abordagens personalizadas com IA
     for emp in empresas:
         razao = emp["razao_social"] or emp["nome_fantasia"] or "Empresa"
         cnae_desc = emp["desc_cnae"] or "Atividade comercial geral"
@@ -406,7 +394,6 @@ def gerar_mensagens():
         msg_email = ""
         msg_telefone = ""
 
-        # Geração condicional por canal escolhido
         if canal_prospeccao in ["email", "ambos"]:
             try:
                 res = ai_client.models.generate_content(
@@ -446,11 +433,11 @@ def gerar_mensagens():
 
 @main_bp.route("/enviar-email", methods=["POST"])
 def enviar_email():
+    # Processa o disparo de e-mail respeitando o Modo de Homologação (Sandbox/Teste)
     empresa_id = request.form.get("empresa_id")
     email_destino_original = request.form.get("contato")
     mensagem = request.form.get("mensagem")
 
-    # Verifica se estamos em modo de homologação
     if MODO_TESTE:
         email_destino = EMAIL_TESTE
         aviso_teste = f"<div class='alert alert-warning'><strong>[MODO DE TESTE ATIVO]</strong> O e-mail original era para: <i>{email_destino_original}</i>, mas foi redirecionado com segurança para o seu e-mail de teste.</div>"
@@ -458,7 +445,6 @@ def enviar_email():
         email_destino = email_destino_original
         aviso_teste = ""
 
-    # TODO: Aqui entrará a integração real com o SendGrid/Resend futuramente
     print(f"[DISPARO E-MAIL] (Modo Teste: {MODO_TESTE}) | Destino Real: {email_destino}\nMensagem:\n{mensagem}\n{'-' * 40}")
 
     return f"""
@@ -478,11 +464,11 @@ def enviar_email():
 
 @main_bp.route("/enviar-whatsapp", methods=["POST"])
 def enviar_whatsapp():
+    # Processa o disparo de WhatsApp respeitando o Modo de Homologação
     empresa_id = request.form.get("empresa_id")
     telefone_destino_original = request.form.get("contato")
     mensagem = request.form.get("mensagem")
 
-    # Verifica se estamos em modo de homologação
     if MODO_TESTE:
         telefone_destino = WHATSAPP_TESTE
         aviso_teste = f"<div class='alert alert-warning'><strong>[MODO DE TESTE ATIVO]</strong> O WhatsApp original era para: <i>{telefone_destino_original}</i>, mas foi redirecionado com segurança para o seu número de teste.</div>"
@@ -490,7 +476,6 @@ def enviar_whatsapp():
         telefone_destino = telefone_destino_original
         aviso_teste = ""
 
-    # TODO: Aqui entrará a integração real com a API de WhatsApp futuramente
     print(f"[DISPARO WHATSAPP] (Modo Teste: {MODO_TESTE}) | Destino Real: {telefone_destino}\nMensagem:\n{mensagem}\n{'-' * 40}")
 
     return f"""

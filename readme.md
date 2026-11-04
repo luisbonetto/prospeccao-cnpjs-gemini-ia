@@ -28,7 +28,7 @@ Uma aplicação web desenvolvida em **Python (Flask)** focada em inteligência c
 
 - **Backend:** Python 3.13+, Flask, SQLite3
 - **Inteligência Artificial:** `google-genai` (SDK oficial do Google Gemini)
-- **Frontend:** HTML5, CSS3, JavaScript (ES6+), Bootstrap 5, Choices.js
+- **Frontend:** HTML5, JavaScript (ES6+), Bootstrap 5 / CSS3, Choices.js
 - **Gerenciamento de Ambiente:** `python-dotenv`
 
 ---
@@ -44,8 +44,6 @@ Prospeccao_cnpjs/
 │   ├── index.html        # Formulário com filtros de prospecção
 │   ├── resultados.html   # Tabela paginada de resultados e seleção de leads
 │   └── revisao_mensagens.html # Painel de revisão e edição das abordagens por IA
-├── static/
-│   └── style.css         # Estilizações customizadas
 ├── .env                  # Variáveis de ambiente (Chave de API do Gemini)
 ├── .gitignore            # Arquivos ignorados pelo Git
 ├── leads.db              # Banco de dados SQLite de CNPJs/CNAEs

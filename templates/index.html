@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <title>Prospecção de CNPJs</title>
-    <!-- Bootstrap 5 CSS -->
+    <!-- Importação do framework Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Choices.js para habilitar busca em tempo real nos selects -->
+    <!-- Importação do Choices.js para habilitar caixas de seleção pesquisáveis -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
 </head>
 <body class="bg-light">
     <div class="container mt-5 mb-5">
         <h2 class="mb-4">Filtros de Prospecção de Empresas</h2>
+        <!-- Formulário principal enviando dados via POST para a rota /resultados -->
         <form action="/resultados" method="POST" class="card p-4 shadow-sm">
 
-            <!-- Seção de Dados do Remetente e Objetivo -->
             <h4 class="mb-3 text-secondary">1. Dados para Abordagem por IA</h4>
             <div class="row">
                 <div class="col-md-4 mb-3">
@@ -39,20 +39,17 @@
             </div>
             <div class="mb-4">
                 <label class="form-label"><strong>Objetivo da Prospecção:</strong></label>
-                <textarea name="objetivo_prospeccao" class="form-control" rows="2" placeholder="Ex: Oferecer serviços de manutenção preventiva e corretiva em inversores de frequência e painéis elétricos." required></textarea>
+                <textarea name="objetivo_prospeccao" class="form-control" rows="2" placeholder="Ex: Oferecer serviços de manutenção preventiva..." required></textarea>
             </div>
 
             <hr class="mb-4">
             <h4 class="mb-3 text-secondary">2. Filtros de Empresas</h4>
 
             <div class="row">
-                <!-- Busca por Razão Social / Nome -->
                 <div class="col-md-6 mb-3">
                     <label class="form-label"><strong>Razão Social ou Nome Fantasia:</strong></label>
-                    <input type="text" name="busca_nome" class="form-control" placeholder="Ex: Tecno, Metalúrgica, Mercado...">
+                    <input type="text" name="busca_nome" class="form-control" placeholder="Ex: Tecno, Metalúrgica...">
                 </div>
-
-                <!-- Busca por CNPJ -->
                 <div class="col-md-6 mb-3">
                     <label class="form-label"><strong>CNPJ Específico:</strong></label>
                     <input type="text" name="cnpj_busca" class="form-control" placeholder="Digite apenas os números do CNPJ">
@@ -60,7 +57,7 @@
             </div>
 
             <div class="row">
-                <!-- Campo de Estados do Brasil -->
+                <!-- Seletor de Estado (UF) que aciona a função JavaScript para carregar municípios dinamicamente -->
                 <div class="col-md-4 mb-3">
                     <label class="form-label"><strong>Estado (UF):</strong></label>
                     <select name="estado" id="estado" class="form-select" onchange="carregarMunicipios(this.value)">
@@ -94,8 +91,6 @@
                         <option value="TO">Tocantins (TO)</option>
                     </select>
                 </div>
-
-                <!-- Filtro por Município / Cidade (Dinâmico com Choices.js) -->
                 <div class="col-md-8 mb-3">
                     <label class="form-label"><strong>Município / Cidade:</strong></label>
                     <select name="municipio" id="municipio" class="form-select">
@@ -104,7 +99,6 @@
                 </div>
             </div>
 
-            <!-- Situação Cadastral -->
             <div class="mb-3">
                 <label class="form-label"><strong>Situação Cadastral:</strong></label>
                 <select name="situacao" class="form-select">
@@ -113,11 +107,10 @@
                 </select>
             </div>
 
-            <!-- Ramo de Atuação / CNAE -->
             <div class="mb-3">
                 <label class="form-label"><strong>Ramo de Atuação / CNAE:</strong></label>
                 <select name="cnae" class="form-select" id="cnae-select">
-                    <option value="">Selecione ou digite para buscar o CNAE (ex: elétrica)...</option>
+                    <option value="">Selecione ou digite para buscar o CNAE...</option>
                     {% for categoria, lista_cnaes in cnaes_por_categoria.items() %}
                         <optgroup label="{{ categoria }}">
                             {% for cnae in lista_cnaes %}
@@ -128,7 +121,6 @@
                 </select>
             </div>
 
-            <!-- Filtro de Exigência de Contato -->
             <div class="mb-3">
                 <label class="form-label"><strong>Filtrar por Contato Disponível:</strong></label>
                 <select name="filtro_contato" class="form-select">
@@ -141,23 +133,14 @@
         </form>
     </div>
 
-    <!-- Scripts do Choices.js -->
+    <!-- Script do Choices.js para busca interativa em selects -->
     <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
     <script>
         let choicesMunicipio = null;
         document.addEventListener('DOMContentLoaded', function () {
             const elementCnae = document.getElementById('cnae-select');
             if (elementCnae) {
-                new Choices(elementCnae, {
-                searchEnabled: true,
-                searchResultLimit: 100,
-                itemSelectText: 'Pressione para selecionar',
-                // Configuração para tornar a busca precisa (evita resultados aleatórios)
-                fuseOptions: {
-                    threshold: 0.5, // 0.0 exige correspondência exata, 0.1 é bem restrito
-                    distance: 1000
-                    }
-                });
+                new Choices(elementCnae, { searchEnabled: true, searchResultLimit: 100, itemSelectText: 'Pressione para selecionar' });
             }
             const elementMunicipio = document.getElementById('municipio');
             if (elementMunicipio) {
@@ -166,6 +149,7 @@
             }
         });
 
+        // Função assíncrona para buscar municípios via AJAX ao alterar a UF
         async function carregarMunicipios(uf) {
             if (!choicesMunicipio) return;
             choicesMunicipio.clearChoices();
