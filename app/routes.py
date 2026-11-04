@@ -438,29 +438,66 @@ def gerar_mensagens():
 
 @main_bp.route("/enviar-email", methods=["POST"])
 def enviar_email():
-    # Processa o disparo de e-mail respeitando o Modo de Homologação (Sandbox/Teste)
     empresa_id = request.form.get("empresa_id")
     email_destino_original = request.form.get("contato")
-    mensagem = request.form.get("mensagem")
+    mensagem_corpo = request.form.get("mensagem")
 
+    # Define o destinatário com base no modo de teste
     if MODO_TESTE:
         email_destino = EMAIL_TESTE
-        aviso_teste = f"<div class='alert alert-warning'><strong>[MODO DE TESTE ATIVO]</strong> O e-mail original era para: <i>{email_destino_original}</i>, mas foi redirecionado com segurança para o seu e-mail de teste.</div>"
+        aviso_teste = f"<div class='alert alert-warning'><strong>[MODO DE TESTE ATIVO]</strong> O e-mail original era para: <i>{email_destino_original}</i>, mas foi direcionado com segurança para o seu e-mail de teste.</div>"
     else:
         email_destino = email_destino_original
         aviso_teste = ""
 
-    print(f"[DISPARO E-MAIL] (Modo Teste: {MODO_TESTE}) | Destino Real: {email_destino}\nMensagem:\n{mensagem}\n{'-' * 40}")
+    # Extrai o assunto da mensagem (primeira linha) ou define um padrão
+    assunto = "Prospecção Comercial"
+    linhas = mensagem_corpo.strip().split("\n")
+    if linhas and linhas[0].lower().startswith("assunto:"):
+        assunto = linhas[0].split(":", 1)[1].strip()
+        corpo_final = "\n".join(linhas[1:]).strip()
+    else:
+        corpo_final = mensagem_corpo
+
+    # Configurações de envio SMTP
+    remetente = os.getenv("EMAIL_REMETENTE")
+    senha = os.getenv("SENHA_EMAIL")
+    smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", 587))
+
+    if not remetente or not senha:
+        return "<div class='alert alert-danger'>Erro: As credenciais EMAIL_REMETENTE ou SENHA_EMAIL não foram encontradas no arquivo .env</div>", 500
+
+    try:
+        # Montagem do e-mail
+        msg = MIMEMultipart()
+        msg['From'] = remetente
+        msg['To'] = email_destino
+        msg['Subject'] = assunto
+        msg.attach(MIMEText(corpo_final, 'plain', 'utf-8'))
+
+        # Conexão e envio via SMTP
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()  # Criptografia TLS
+        server.login(remetente, senha)
+        server.send_message(msg)
+        server.quit()
+
+        status_envio = f"<div class='alert alert-success'><strong>Sucesso!</strong> E-mail enviado com sucesso para: <strong>{email_destino}</strong></div>"
+
+    except Exception as e:
+        current_app.logger.exception("Erro ao enviar e-mail via SMTP")
+        status_envio = f"<div class='alert alert-danger'><strong>Falha no envio:</strong> {str(e)}</div>"
 
     return f"""
     <!DOCTYPE html>
     <html lang='pt-br'>
     <head><link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'></head>
     <body class='bg-light'><div class='container mt-5 text-center'>
-        <div class='card shadow p-4 mx-auto' style='max-width: 500px;'>
-            <h2>E-mail Processado!</h2>
+        <div class='card shadow p-4 mx-auto' style='max-width: 550px;'>
+            <h2>Status do Disparo</h2>
             {aviso_teste}
-            <p>A mensagem foi disparada para: <strong>{email_destino}</strong></p>
+            {status_envio}
             <a href='javascript:history.back()' class='btn btn-primary mt-3'>Voltar para Revisão</a>
         </div>
     </div></body></html>
