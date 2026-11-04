@@ -90,41 +90,5 @@
             <a href="javascript:history.back()" class="btn btn-outline-secondary btn-lg">Voltar aos Resultados</a>
         </div>
     </div>
-
-    <!-- Script auxiliar para disparar as rotas via requisição POST mantendo a edição do usuário -->
-    <script>
-        function enviarMensagem(empresaId, contatoDestino, rota) {
-            const mensagemTexto = document.getElementById('msg_' + empresaId).value;
-
-            // Criando um formulário dinâmico para enviar os dados via POST para a rota específica
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = rota;
-
-            // Campo ID da empresa
-            const inputId = document.createElement('input');
-            inputId.type = 'hidden';
-            inputId.name = 'empresa_id';
-            inputId.value = empresaId;
-            form.appendChild(inputId);
-
-            // Campo Contato (Email ou Telefone)
-            const inputContato = document.createElement('input');
-            inputContato.type = 'hidden';
-            inputContato.name = 'contato';
-            inputContato.value = contatoDestino;
-            form.appendChild(inputContato);
-
-            // Campo Mensagem Editada
-            const inputMsg = document.createElement('input');
-            inputMsg.type = 'hidden';
-            inputMsg.name = 'mensagem';
-            inputMsg.value = mensagemTexto;
-            form.appendChild(inputMsg);
-
-            document.body.appendChild(form);
-            form.submit();
-        }
-    </script>
 </body>
 </html>
