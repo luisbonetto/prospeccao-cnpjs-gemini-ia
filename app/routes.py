@@ -85,7 +85,7 @@ def index():
         if conn:
             conn.close()
 
-    return render_template("index.html", cnaes_por_categoria=cnaes_por_categoria)
+    return render_template("index.html", cnaes_por_categoria=cnaes_por_categoria, MODO_TESTE=MODO_TESTE)
 
 
 @main_bp.route("/api/municipios/<uf>")
@@ -603,4 +603,4 @@ def historico():
         if conn:
             conn.close()
 
-    return render_template("historico.html", registros=registros)
+    return render_template("historico.html", registros=registros, MODO_TESTE=MODO_TESTE)
