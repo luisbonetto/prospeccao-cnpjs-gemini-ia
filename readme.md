@@ -44,8 +44,6 @@ Prospeccao_cnpjs/
 │   ├── index.html        # Formulário com filtros de prospecção
 │   ├── resultados.html   # Tabela paginada de resultados e seleção de leads
 │   └── revisao_mensagens.html # Painel de revisão e edição das abordagens por IA
-├── static/
-│   └── style.css         # Estilizações customizadas
 ├── .env                  # Variáveis de ambiente (Chave de API do Gemini)
 ├── .gitignore            # Arquivos ignorados pelo Git
 ├── leads.db              # Banco de dados SQLite de CNPJs/CNAEs
