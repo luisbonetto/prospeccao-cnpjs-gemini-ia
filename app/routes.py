@@ -298,9 +298,19 @@ def resultados():
                 "email": row["email"].lower() if row["email"] else "Não informado",
             })
 
+        # Consulta para saber quais empresas já receberam disparo com sucesso
+        ids_contatados = []
+        try:
+            cursor.execute("SELECT DISTINCT empresa_id FROM historico_disparos WHERE status LIKE '%Sucesso%'")
+            ids_contatados = [row["empresa_id"] for row in cursor.fetchall() if row["empresa_id"] is not None]
+        except Exception:
+            # Caso a tabela ainda não exista ou esteja vazia, ignora com segurança
+            pass
+
         return render_template(
             "resultados.html",
             empresas=empresas,
+            ids_contatados=ids_contatados,  # <--- Passamos esta lista para o HTML
             pagina_atual=pagina,
             total_paginas=total_paginas,
             total_registros=total_registros,
@@ -493,33 +503,34 @@ def enviar_email():
             status_texto = f"Falha: {str(e)}"
             mensagem_resultado = f"<div class='alert alert-danger'><strong>Falha no envio:</strong> {str(e)}</div>"
 
-    # SALVANDO NO BANCO DE DADOS SQLite
-    try:
-        db_path = get_db_path()
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+        # SALVANDO NO BANCO DE DADOS SQLite
+        try:
+            db_path = get_db_path()
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
 
-        # Garante que a tabela existe
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS historico_disparos (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                empresa_id INTEGER,
-                email_destino TEXT,
-                modo_teste BOOLEAN,
-                status TEXT,
-                data_envio TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
+            # Garante que a tabela existe com a coluna razao_social
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS historico_disparos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    empresa_id INTEGER,
+                    razao_social TEXT,
+                    email_destino TEXT,
+                    modo_teste BOOLEAN,
+                    status TEXT,
+                    data_envio TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
 
-        cursor.execute("""
-            INSERT INTO historico_disparos (empresa_id, email_destino, modo_teste, status)
-            VALUES (?, ?, ?, ?)
-        """, (empresa_id, email_destino, int(MODO_TESTE), status_texto))
+            cursor.execute("""
+                INSERT INTO historico_disparos (empresa_id, razao_social, email_destino, modo_teste, status)
+                VALUES (?, ?, ?, ?, ?)
+            """, (empresa_id, razao_social, email_destino, int(MODO_TESTE), status_texto))
 
-        conn.commit()
-        conn.close()
-    except Exception as db_err:
-        current_app.logger.exception("Erro ao gravar histórico no banco de dados")
+            conn.commit()
+            conn.close()
+        except Exception as db_err:
+            current_app.logger.exception("Erro ao gravar histórico no banco de dados")
 
     return f"""
     <!DOCTYPE html>
@@ -579,11 +590,12 @@ def historico():
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
 
-            # Garante que a tabela existe antes de consultar
+            # Garante que a tabela existe
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS historico_disparos (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     empresa_id INTEGER,
+                    razao_social TEXT,
                     email_destino TEXT,
                     modo_teste BOOLEAN,
                     status TEXT,
@@ -591,8 +603,16 @@ def historico():
                 )
             """)
 
+            # Tenta adicionar a coluna razao_social caso a tabela seja antiga e não a possua
+            try:
+                cursor.execute("ALTER TABLE historico_disparos ADD COLUMN razao_social TEXT;")
+                conn.commit()
+            except sqlite3.OperationalError:
+                # A coluna já existe, ignora o erro
+                pass
+
             cursor.execute("""
-                SELECT id, empresa_id, email_destino, modo_teste, status, data_envio
+                SELECT id, empresa_id, razao_social, email_destino, modo_teste, status, data_envio
                 FROM historico_disparos
                 ORDER BY data_envio DESC
             """)

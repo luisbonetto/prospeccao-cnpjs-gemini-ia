@@ -70,7 +70,7 @@
                             <div class="flex-grow-1 d-flex flex-column">
                                 <label class="form-label text-primary small fw-bold">E-mail (Assunto + Corpo):</label>
                                 <textarea id="msg_email_{{ item.id }}" class="form-control flex-grow-1 mb-2" rows="6">{{ item.mensagem_email }}</textarea>
-                                <button type="button" class="btn btn-primary fw-bold w-100" onclick="enviarMensagem('{{ item.id }}', '{{ item.email }}', 'msg_email_{{ item.id }}', '/enviar-email')">
+                                <button type="button" class="btn btn-primary fw-bold w-100" onclick="enviarMensagem('{{ item.id }}', '{{ item.email }}', 'msg_email_{{ item.id }}', '/enviar-email', '{{ item.razao_social }}')">
                                     Enviar por E-mail
                                 </button>
                             </div>
@@ -94,7 +94,7 @@
 
         <script>
             // Função JavaScript auxiliar para criar dinamicamente um formulário POST e submetê-lo
-            function enviarMensagem(empresaId, contatoDestino, fieldId, rota) {
+            function enviarMensagem(empresaId, contatoDestino, fieldId, rota, razaoSocial) {
                 const mensagemTexto = document.getElementById(fieldId).value;
 
                 const form = document.createElement('form');
@@ -106,6 +106,12 @@
                 inputId.name = 'empresa_id';
                 inputId.value = empresaId;
                 form.appendChild(inputId);
+
+                const inputRazao = document.createElement('input');
+                inputRazao.type = 'hidden';
+                inputRazao.name = 'razao_social';
+                inputRazao.value = razaoSocial;
+                form.appendChild(inputRazao);
 
                 const inputContato = document.createElement('input');
                 inputContato.type = 'hidden';

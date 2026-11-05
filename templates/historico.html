@@ -58,7 +58,7 @@
                         <tr>
                             <th>#ID</th>
                             <th>Data / Hora</th>
-                            <th>ID da Empresa</th>
+                            <th>Empresa</th>
                             <th>Destinatário</th>
                             <th>Modo</th>
                             <th>Status</th>
@@ -70,7 +70,7 @@
                             <tr>
                                 <td>{{ reg.id }}</td>
                                 <td>{{ reg.data_envio }}</td>
-                                <td>{{ reg.empresa_id }}</td>
+                                <td><strong>{{ reg.razao_social if reg.razao_social else reg.empresa_id }}</strong></td>
                                 <td>{{ reg.email_destino }}</td>
                                 <td>
                                     {% if reg.modo_teste %}
