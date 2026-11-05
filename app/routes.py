@@ -323,7 +323,8 @@ def resultados():
             remetente_nome=remetente_nome,
             remetente_cargo=remetente_cargo,
             remetente_empresa=remetente_empresa,
-            objetivo_prospeccao=objetivo_prospeccao
+            objetivo_prospeccao=objetivo_prospeccao,
+            MODO_TESTE=MODO_TESTE
         )
 
     except Exception:
@@ -442,7 +443,8 @@ def gerar_mensagens():
     return render_template(
         "revisao_mensagens.html",
         mensagens_geradas=mensagens_geradas,
-        canal_selecionado=canal_prospeccao
+        canal_selecionado=canal_prospeccao,
+        MODO_TESTE=MODO_TESTE
     )
 
 
