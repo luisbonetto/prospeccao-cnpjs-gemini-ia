@@ -626,3 +626,78 @@ def historico():
             conn.close()
 
     return render_template("historico.html", registros=registros, MODO_TESTE=MODO_TESTE)
+
+
+@main_bp.route("/dashboard")
+def dashboard():
+    conn = None
+    try:
+        db_path = get_db_path()
+        if not os.path.exists(db_path):
+            return "Banco de dados não encontrado", 500
+
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        # Garante que a tabela existe
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS historico_disparos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                empresa_id INTEGER,
+                razao_social TEXT,
+                email_destino TEXT,
+                modo_teste BOOLEAN,
+                status TEXT,
+                data_envio TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # 1. Total de disparos
+        cursor.execute("SELECT COUNT(*) as total FROM historico_disparos")
+        total_disparos = cursor.fetchone()["total"]
+
+        # 2. Total de empresas únicas contatadas
+        cursor.execute(
+            "SELECT COUNT(DISTINCT empresa_id) as unicas FROM historico_disparos WHERE empresa_id IS NOT NULL")
+        empresas_unicas = cursor.fetchone()["unicas"]
+
+        # 3. Disparos com sucesso vs falhas
+        cursor.execute("SELECT COUNT(*) as sucesso FROM historico_disparos WHERE status LIKE '%Sucesso%'")
+        total_sucesso = cursor.fetchone()["sucesso"]
+
+        total_falhas = total_disparos - total_sucesso
+
+        # 4. Modo Teste vs Produção
+        cursor.execute("SELECT COUNT(*) as testes FROM historico_disparos WHERE modo_teste = 1")
+        total_testes = cursor.fetchone()["testes"]
+        total_producao = total_disparos - total_testes
+
+        # 5. Últimos 5 disparos para uma tabela rápida de resumo
+        cursor.execute("""
+            SELECT id, razao_social, email_destino, modo_teste, status, data_envio
+            FROM historico_disparos
+            ORDER BY data_envio DESC
+            LIMIT 5
+        """)
+        ultimos_disparos = cursor.fetchall()
+
+    except Exception as e:
+        current_app.logger.exception("Erro ao carregar métricas do dashboard")
+        total_disparos = empresas_unicas = total_sucesso = total_falhas = total_testes = total_producao = 0
+        ultimos_disparos = []
+    finally:
+        if conn:
+            conn.close()
+
+    return render_template(
+        "dashboard.html",
+        total_disparos=total_disparos,
+        empresas_unicas=empresas_unicas,
+        total_sucesso=total_sucesso,
+        total_falhas=total_falhas,
+        total_testes=total_testes,
+        total_producao=total_producao,
+        ultimos_disparos=ultimos_disparos,
+        MODO_TESTE=MODO_TESTE
+    )
