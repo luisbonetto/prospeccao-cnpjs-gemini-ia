@@ -138,6 +138,7 @@ def resultados():
         remetente_cargo = request.form.get("remetente_cargo", "")
         remetente_empresa = request.form.get("remetente_empresa", "")
         objetivo_prospeccao = request.form.get("objetivo_prospeccao", "")
+        canal_prospeccao = request.form.get("canal_prospeccao", "ambos")
 
         estado = request.form.get("estado", "")
         municipio = request.form.get("municipio", "")
@@ -151,6 +152,7 @@ def resultados():
         remetente_cargo = request.args.get("remetente_cargo", "")
         remetente_empresa = request.args.get("remetente_empresa", "")
         objetivo_prospeccao = request.args.get("objetivo_prospeccao", "")
+        canal_prospeccao = request.form.get("canal_prospeccao", "ambos")
 
         estado = request.args.get("estado", "")
         municipio = request.args.get("municipio", "")
@@ -310,7 +312,8 @@ def resultados():
         return render_template(
             "resultados.html",
             empresas=empresas,
-            ids_contatados=ids_contatados,  # <--- Passamos esta lista para o HTML
+            ids_contatados=ids_contatados,  # <--- Passamos esta lista para o
+            canal_prospeccao=canal_prospeccao,
             pagina_atual=pagina,
             total_paginas=total_paginas,
             total_registros=total_registros,
@@ -420,7 +423,7 @@ def gerar_mensagens():
             except Exception as e:
                 msg_email = f"Erro na IA (E-mail): {str(e)}"
 
-        if canal_prospeccao in ["telefone", "ambos"]:
+        if canal_prospeccao in ["whatsapp", "ambos"]:
             try:
                 res = ai_client.models.generate_content(
                     model="gemini-3.1-flash-lite",
@@ -444,6 +447,7 @@ def gerar_mensagens():
         "revisao_mensagens.html",
         mensagens_geradas=mensagens_geradas,
         canal_selecionado=canal_prospeccao,
+        canal_prospeccao=canal_prospeccao,
         MODO_TESTE=MODO_TESTE
     )
 
