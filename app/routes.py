@@ -1,6 +1,6 @@
 import os
 import sqlite3
-
+import urllib.parse
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -12,7 +12,7 @@ from flask import Blueprint, render_template, request, jsonify, current_app
 main_bp = Blueprint('main', __name__)
 
 # --- CONFIGURAÇÕES DE HOMOLOGAÇÃO / SEGURANÇA ---
-MODO_TESTE = True
+MODO_TESTE = False
 EMAIL_TESTE = os.getenv("EMAIL_TESTE", "seu_email_padrao@exemplo.com")
 WHATSAPP_TESTE = os.getenv("WHATSAPP_TESTE", "(00) 00000-0000")
 
@@ -547,8 +547,6 @@ def enviar_email():
     </div></body></html>
     """
 
-
-import urllib.parse
 
 
 @main_bp.route("/enviar-whatsapp", methods=["POST"])
