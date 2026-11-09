@@ -548,34 +548,89 @@ def enviar_email():
     """
 
 
+import urllib.parse
+
+
 @main_bp.route("/enviar-whatsapp", methods=["POST"])
 def enviar_whatsapp():
     # Processa o disparo de WhatsApp respeitando o Modo de Homologação
     empresa_id = request.form.get("empresa_id")
-    telefone_destino_original = request.form.get("contato")
-    mensagem = request.form.get("mensagem")
+    telefone_destino_original = request.form.get("contato", "")
+    mensagem = request.form.get("mensagem", "")
+    razao_social = request.form.get("razao_social", "Não informada")
 
+    # Tratamento e segurança do destinatário
     if MODO_TESTE:
         telefone_destino = WHATSAPP_TESTE
-        aviso_teste = f"<div class='alert alert-warning'><strong>[MODO DE TESTE ATIVO]</strong> O WhatsApp original era para: <i>{telefone_destino_original}</i>, mas foi redirecionado com segurança para o seu número de teste.</div>"
+        aviso_teste = f"<div class='alert alert-warning'><strong>[MODO DE TESTE ATIVO]</strong> O WhatsApp original era para: <i>{telefone_destino_original}</i>, mas foi direcionado com segurança para o seu número de teste ({WHATSAPP_TESTE}).</div>"
     else:
         telefone_destino = telefone_destino_original
         aviso_teste = ""
 
-    print(f"[DISPARO WHATSAPP] (Modo Teste: {MODO_TESTE}) | Destino Real: {telefone_destino}\nMensagem:\n{mensagem}\n{'-' * 40}")
+    # Limpa caracteres não numéricos do telefone (mantém apenas dígitos)
+    numero_limpo = "".join(filter(str.isdigit, telefone_destino))
+
+    # Adiciona código do país (+55) caso não esteja presente
+    if len(numero_limpo) in [10, 11]:
+        numero_limpo = f"55{numero_limpo}"
+
+    # Codifica o texto da mensagem para uso em URL HTTP
+    mensagem_encoded = urllib.parse.quote(mensagem)
+    link_whatsapp = f"https://wa.me/{numero_limpo}?text={mensagem_encoded}"
+
+    # Grava o histórico do disparo no banco SQLite
+    try:
+        db_path = get_db_path()
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS historico_disparos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                empresa_id INTEGER,
+                razao_social TEXT,
+                email_destino TEXT,
+                modo_teste BOOLEAN,
+                status TEXT,
+                data_envio TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        cursor.execute("""
+            INSERT INTO historico_disparos (empresa_id, razao_social, email_destino, modo_teste, status)
+            VALUES (?, ?, ?, ?, ?)
+        """, (empresa_id, razao_social, f"WhatsApp: {telefone_destino}", int(MODO_TESTE), "Sucesso (Link Gerado)"))
+
+        conn.commit()
+        conn.close()
+    except Exception as db_err:
+        current_app.logger.exception("Erro ao gravar histórico do WhatsApp no banco de dados")
 
     return f"""
     <!DOCTYPE html>
     <html lang='pt-br'>
-    <head><link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'></head>
-    <body class='bg-light'><div class='container mt-5 text-center'>
-        <div class='card shadow p-4 mx-auto' style='max-width: 500px;'>
-            <h2>WhatsApp Processado!</h2>
-            {aviso_teste}
-            <p>O disparo para o WhatsApp <strong>{telefone_destino}</strong> foi acionado.</p>
-            <a href='javascript:history.back()' class='btn btn-success mt-3'>Voltar para Revisão</a>
+    <head>
+        <meta charset='UTF-8'>
+        <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>
+    </head>
+    <body class='bg-light'>
+        <div class='container mt-5 text-center'>
+            <div class='card shadow p-4 mx-auto' style='max-width: 550px;'>
+                <h2>WhatsApp Pronto!</h2>
+                {aviso_teste}
+                <p class='mt-3'>Clique no botão abaixo para abrir a conversa com a mensagem pré-formatada:</p>
+
+                <a href='{link_whatsapp}' target='_blank' class='btn btn-success btn-lg my-3 fw-bold'>
+                    📱 Abrir no WhatsApp
+                </a>
+
+                <div class='mt-3'>
+                    <a href='javascript:history.back()' class='btn btn-outline-secondary'>Voltar para Revisão</a>
+                </div>
+            </div>
         </div>
-    </div></body></html>
+    </body>
+    </html>
     """
 
 
