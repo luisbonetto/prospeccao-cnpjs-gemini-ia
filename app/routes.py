@@ -142,7 +142,6 @@ def resultados():
 
         estado = request.form.get("estado", "")
         municipio = request.form.get("municipio", "")
-        situacao = request.form.get("situacao", "")
         cnae = request.form.get("cnae", "")
         busca_nome = request.form.get("busca_nome", "")
         cnpj_busca = request.form.get("cnpj_busca", "")
@@ -156,7 +155,6 @@ def resultados():
 
         estado = request.args.get("estado", "")
         municipio = request.args.get("municipio", "")
-        situacao = request.args.get("situacao", "")
         cnae = request.args.get("cnae", "")
         busca_nome = request.args.get("busca_nome", "")
         cnpj_busca = request.args.get("cnpj_busca", "")
@@ -194,8 +192,6 @@ def resultados():
             where_clauses.append("e.municipio = ?")
             params.append(municipio)
 
-        if situacao == "ATIVA":
-            where_clauses.append("e.situacao_cadastral = '02'")
 
         if cnae:
             where_clauses.append("e.cnae_fiscal_principal LIKE ?")
@@ -319,7 +315,6 @@ def resultados():
             total_registros=total_registros,
             filtro_estado=estado,
             filtro_municipio=municipio,
-            filtro_situacao=situacao,
             filtro_cnae=cnae,
             filtro_busca_nome=busca_nome,
             filtro_cnpj_busca=cnpj_busca,
